@@ -29,6 +29,6 @@ Test the libgphoto2 module, also taking an image (useful for optical debug!)
 
 Camera sensor comparison, showing the second hand DSLRs are on par with much more expensive scientific cameras: http://www.clarkvision.com/articles/digital.sensor.performance.summary/
 
-Debayering the CMOS sensor of a camera had almost no effect for visible-light sensitivity, since on the one hand it removes the color filters (good), but it also removes the microlens array (bad): https://stargazerslounge.com/topic/166334-debayering-a-dslrs-bayer-matrix/?page=10
+Debayering the CMOS sensor of a camera had almost no effect for visible-light sensitivity, since on the one hand it removes the color filters (good), but it also removes the microlens array (bad): https://stargazerslounge.com/topic/166334-debayering-a-dslrs-bayer-matrix/?page=10. Procedure for Canon 350D described here: https://www.lifepixel.com/tutorials/infrared-diy-tutorials/canon-rebel-xt-350d
 
 Could the spectral range be possibly extended into the mid-IR through covering a part of the CMOS sensor by a thin https://en.wikipedia.org/wiki/Photon_upconversion layer?
