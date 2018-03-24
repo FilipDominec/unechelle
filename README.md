@@ -1,5 +1,6 @@
-# unechelle
+# unechelle - software control for amateur high-performance spectrometers
 Reduces an echelle spectrograph image into an optical spectrum. The image is assumed to be formed from a collimated beam, dispersed by a prism and diffracted by a blazed high-order grating. When the input from a white LED gets somewhat blurred, it may look like this:
+
 ![sample echelle image](echelle-led.jpg)
 
 One needs an optical fibre with a mount, a collimating (~50mm) photographic lens, an optical prism, a 2" optical grating with 50-150 lines/mm blazed to as high angle as possible, and a (de-bayered) digital camera with a telephoto (~100-200mm) lens. And a computer with Python installed. The blazed grating is the only component that is hard to obtain, but sometimes one can be found e.g. on e-bay for less than $100-$200. Optical assembly takes several evenings, but it provides one with a spectrometer that can compete with professional $5000+ instruments.
@@ -24,3 +25,10 @@ Test the libgphoto2 module, also taking an image (useful for optical debug!)
 
 	sudo python3 /usr/local/share/python-gphoto2/examples/preview-image.py  
 
+## Some useful links
+
+Camera sensor comparison, showing the second hand DSLRs are on par with much more expensive scientific cameras: http://www.clarkvision.com/articles/digital.sensor.performance.summary/
+
+Debayering the CMOS sensor of a camera had almost no effect for visible-light sensitivity, since on the one hand it removes the color filters (good), but it also removes the microlens array (bad): https://stargazerslounge.com/topic/166334-debayering-a-dslrs-bayer-matrix/?page=10
+
+Could the spectral range be possibly extended into the mid-IR through covering a part of the CMOS sensor by a thin https://en.wikipedia.org/wiki/Photon_upconversion layer?
