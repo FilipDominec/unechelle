@@ -26,9 +26,11 @@ import subprocess
 import sys
 import numpy as np
 
-from PIL import Image
-
 import gphoto2 as gp
+
+from PIL import Image
+from scipy import ndimage 
+import matplotlib.pyplot as plt
 
 def main():
     logging.basicConfig(
@@ -52,9 +54,9 @@ def main():
             gp.check_result(gp.gp_camera_set_config(camera, config))
         else:
             print("Error setting value %s for %s using widget %s" % (value, name, widget))
-    my_set(name='imageformat', value='Large Fine JPEG')
+    #my_set(name='imageformat', value='Large Fine JPEG')
+    my_set(name='imageformat', value='RAW') ## TODO now working yet
     my_set(name='shutterspeed', value='1')
-    #my_set(name='imageformat', value='RAW') ## TODO now working yet
 
     # TODO my_get and find out how fractions of second are specified!
 
@@ -62,12 +64,8 @@ def main():
     # find the image format config item
     OK, image_format = gp.gp_widget_get_child_by_name(config, 'imageformat')
     if OK >= gp.GP_OK:
-        # get current setting
         imgformat = gp.check_result(gp.gp_widget_get_value(image_format))
         print('image_format = ', imgformat)
-        # make sure it's not raw
-        if 'raw' in imgformat.lower(): print('FIXME Cannot preview raw images')
-            #return 1
 
     # find the capture size class config item
     # need to set this on my Canon 350d to get preview to work at all
@@ -78,30 +76,74 @@ def main():
         gp.check_result(gp.gp_widget_set_value(capture_size_class, value))
         # set config
         gp.check_result(gp.gp_camera_set_config(camera, config))
+
+
     # capture preview image (not saved to camera memory card)
     print('Capturing preview image')
     camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
     file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
-
+    print('01----------', type(file_data),file_data)
 
     # display image
     data = memoryview(file_data)
-    print(type(data), len(data))
+    print('02----------', type(data), data)
+    print('    ', len(data))
     print(data[:10].tolist())
     if 'raw' in imgformat.lower():
         #rawimage = open(io.BytesIO(file_data))
         ## FIXME raw format would be more accurate than JPEG, but  AttributeError: '_io.BytesIO' object has no attribute 'encode'
-        from rawkit import raw
-        raw_image_process = raw.Raw(io.BytesIO(file_data))
-        buffered_image = numpy.array(raw_image_process.to_buffer())
+        #xx from rawkit import raw
+        #xx raw_image_process = raw.Raw(io.BytesIO(file_data))
+
+        #import rawpy
+        #raw = rawpy.imread(bytesio)
+        #rgb = raw.postprocess()
+
+        #bytesio = io.BytesIO(file_data)
+        #print('bytesio', bytesio)
+
+        gp.gp_file_save(camera_file, 'output.cr2')
+
+
+        from rawkit.raw import Raw
+        from rawkit.options import interpolation
+        raw_image = Raw(filename='output.cr2')
+                # 'bayer_data', 'close', 'color', 'color_description', 'color_filter_array', 'data', 
+                # 'image_unpacked', 'libraw', 'metadata', 'options', 'process', 'raw_image', 'save', 
+                # 'save_thumb', 'thumb_unpacked', 'thumbnail_to_buffer', 'to_buffer', 'unpack', 'unpack_thumb'
+        raw_image.options.interpolation = interpolation.linear # or "amaze", see https://rawkit.readthedocs.io/en/latest/api/rawkit.html
+
+        raw_image.save("output-test.ppm") ## FIXME - saved ppm image has increased brightness, where I ?
+
+        raw_image_process = raw_image.process()
+        if raw_image_process is raw_image: print("they are identical")
+
+
+        ## FIXME - 
+        buffered_image = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
+        #print('bayer_data', raw_image.bayer_data()) #  ? 
+        #print('as_array', raw_image.as_array()) # does not exist, although documented??
+        #print(type(raw_image.to_buffer())) # Convert the image to an RGB buffer. Return type:	bytearray
+
+        #buffered_image = np.array(flat_list).reshape(4)
+        print(buffered_image) ## gives 1-d array of values
+        print(buffered_image.shape) ## gives 1-d array of values
+
+        plt.imshow(buffered_image)
+        #plt.plot_surface(buffered_image)
+        plt.plot([200,500], [300,-100], lw=5, c='r')
+        plt.show()
+
+        #scipy.ndimage.
+        print('', )
+        print('', )
+
         print(buffered_image.shape)
     else:
         image = Image.open(io.BytesIO(file_data))
         npimage = np.array(image)
         print(image, npimage)
         #image.show()
-        from scipy import ndimage 
-        import matplotlib.pyplot as plt
         plt.imshow(npimage)
         plt.plot([200,500], [300,-100], lw=5, c='k')
         plt.show()

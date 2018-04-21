@@ -16,7 +16,7 @@ For convenience, the program should be able to control digital cameras with *lib
 Get the camera controlling modules for *python3*:
 
     sudo pip3 install -v gphoto2 
-    sudo pip3 install -v rawkit 
+    sudo pip3 install -v rawkit  ## ??
     sudo pip3 install -v numpy 
 
 Connect your camera to the computer, make sure both are on. 
