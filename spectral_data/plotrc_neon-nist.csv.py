@@ -7,7 +7,7 @@ matplotlib.rc('font', size=12, family='serif')
  #   ax.plot(x, y, label="%s" % (label), color=color)
     #ax.plot(x, y, label="%s" % (label.split('.dat')[0]), color=colors[c%10], ls=['-','--'][int(c/10)]) 
 for xx,yy in zip(xs[0],ys[0]):
-  ax.plot((xx,xx), (0,np.log10(yy)), lw=yy/300, alpha=.4, c='r')
+  ax.plot((xx,xx), (0,np.log10(yy)), lw=yy/3000, alpha=.8, c='r')
 ax.set_xlabel('wavelength (nm)')
 ax.set_ylabel('log of relative intensity')
 

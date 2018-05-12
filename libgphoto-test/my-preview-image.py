@@ -19,6 +19,8 @@
 
 from __future__ import print_function
 
+
+
 import io
 import logging
 import os
@@ -32,6 +34,11 @@ from PIL import Image
 from scipy import ndimage 
 import matplotlib.pyplot as plt
 
+shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 1
+iso             = sys.argv[2] if len(sys.argv)>2 else 100
+comment         = sys.argv[3] if len(sys.argv)>3 else ''
+
+def get_raw(imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
 def main():
     logging.basicConfig(
         format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
@@ -55,8 +62,9 @@ def main():
         else:
             print("Error setting value %s for %s using widget %s" % (value, name, widget))
     #my_set(name='imageformat', value='Large Fine JPEG')
-    my_set(name='imageformat', value='RAW') ## TODO now working yet
-    my_set(name='shutterspeed', value='1')
+    my_set(name='imageformat', value='RAW')
+    my_set(name='shutterspeed', value='{}'.format(shutterspeed))
+    my_set(name='iso', value='{}'.format(iso))
 
     # TODO my_get and find out how fractions of second are specified!
 
@@ -101,19 +109,22 @@ def main():
 
         #bytesio = io.BytesIO(file_data)
         #print('bytesio', bytesio)
+        raw_file_name = 'image_logs/output_debayered_{}s_ISO{}_{}.cr2'.format(shutterspeed.replace('/','div'), iso, comment)
+        gp.gp_file_save(camera_file, raw_file_name)
 
-        gp.gp_file_save(camera_file, 'output.cr2')
-
+        # Note that - if Canon cameras are used - the dependency on rawkit can be replaced with a dedicated parser
+        #https://codereview.stackexchange.com/questions/75374/cr2-raw-image-file-parser-in-python-3
 
         from rawkit.raw import Raw
         from rawkit.options import interpolation
-        raw_image = Raw(filename='output.cr2')
+        raw_image = Raw(filename=raw_file_name)
                 # 'bayer_data', 'close', 'color', 'color_description', 'color_filter_array', 'data', 
                 # 'image_unpacked', 'libraw', 'metadata', 'options', 'process', 'raw_image', 'save', 
                 # 'save_thumb', 'thumb_unpacked', 'thumbnail_to_buffer', 'to_buffer', 'unpack', 'unpack_thumb'
-        raw_image.options.interpolation = interpolation.linear # or "amaze", see https://rawkit.readthedocs.io/en/latest/api/rawkit.html
+        #raw_image.options.interpolation = interpolation.linear # or "amaze", see https://rawkit.readthedocs.io/en/latest/api/rawkit.html
+        raw_image.options.interpolation = interpolation.amaze # or "amaze", see https://rawkit.readthedocs.io/en/latest/api/rawkit.html
 
-        raw_image.save("output-test.ppm") ## FIXME - saved ppm image has increased brightness, where I ?
+        raw_image.save("output-test.ppm") ## FIXME - saved ppm image has auto-normalized brightness, why?
 
         raw_image_process = raw_image.process()
         if raw_image_process is raw_image: print("they are identical")
@@ -130,9 +141,14 @@ def main():
         print(buffered_image.shape) ## gives 1-d array of values
 
         plt.imshow(buffered_image)
-        #plt.plot_surface(buffered_image)
-        plt.plot([200,500], [300,-100], lw=5, c='r')
-        plt.show()
+        plt.hist(buffered_image.flatten(), 4096)
+        #plt.plot([200,500], [300,-100], lw=5, c='r')
+        #plt.show()
+
+        ## Save the raw pixels
+        try: import cPickle as pickle
+        except: import pickle
+
 
         #scipy.ndimage.
         print('', )
