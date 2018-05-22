@@ -2,7 +2,10 @@
 
 # python-gphoto2 - Python interface to libgphoto2
 # http://github.com/jim-easterbrook/python-gphoto2
+# Adapted from the example by
 # Copyright (C) 2015-17  Jim Easterbrook  jim@jim-easterbrook.me.uk
+# by
+# Copyright (C) 2018-   
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +19,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from __future__ import print_function
-
-
 
 import io
 import logging
@@ -38,17 +37,16 @@ shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 1
 iso             = sys.argv[2] if len(sys.argv)>2 else 100
 comment         = sys.argv[3] if len(sys.argv)>3 else ''
 
-def get_raw(imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
+def get_img(camera, imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
 def main():
-    logging.basicConfig(
-        format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
+    logging.basicConfig( format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
     gp.check_result(gp.use_python_logging())
+    print('Establishing communication with the camera (wait few seconds)')
     camera = gp.check_result(gp.gp_camera_new())
     gp.check_result(gp.gp_camera_init(camera))
     # required configuration will depend on camera type!
-    print('Checking camera config')
-    # get configuration tree
     config = gp.check_result(gp.gp_camera_get_config(camera))
+    print('Camera ready')
 
     # TODO  get the list of 'gp_abilities_list_get_abilities' or something like that ? 
     #  --> find out how to set image format
@@ -66,14 +64,10 @@ def main():
     my_set(name='shutterspeed', value='{}'.format(shutterspeed))
     my_set(name='iso', value='{}'.format(iso))
 
-    # TODO my_get and find out how fractions of second are specified!
-
-
     # find the image format config item
     OK, image_format = gp.gp_widget_get_child_by_name(config, 'imageformat')
     if OK >= gp.GP_OK:
         imgformat = gp.check_result(gp.gp_widget_get_value(image_format))
-        print('image_format = ', imgformat)
 
     # find the capture size class config item
     # need to set this on my Canon 350d to get preview to work at all
@@ -131,17 +125,17 @@ def main():
 
 
         ## FIXME - 
-        buffered_image = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
+        npimage = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
         #print('bayer_data', raw_image.bayer_data()) #  ? 
         #print('as_array', raw_image.as_array()) # does not exist, although documented??
         #print(type(raw_image.to_buffer())) # Convert the image to an RGB buffer. Return type:	bytearray
 
-        #buffered_image = np.array(flat_list).reshape(4)
-        print(buffered_image) ## gives 1-d array of values
-        print(buffered_image.shape) ## gives 1-d array of values
+        #npimage = np.array(flat_list).reshape(4)
+        print(npimage) ## gives 1-d array of values
+        print(npimage.shape) ## gives 1-d array of values
 
-        plt.imshow(buffered_image)
-        plt.hist(buffered_image.flatten(), 4096)
+        plt.imshow(npimage)
+        plt.hist(npimage.flatten(), 4096)
         #plt.plot([200,500], [300,-100], lw=5, c='r')
         #plt.show()
 
@@ -149,16 +143,18 @@ def main():
         try: import cPickle as pickle
         except: import pickle
 
+        print('retrieved image as numpy array with dimensions:', npimage.shape)
 
         #scipy.ndimage.
         print('', )
         print('', )
 
-        print(buffered_image.shape)
+        print(npimage.shape)
     else:
         image = Image.open(io.BytesIO(file_data))
         npimage = np.array(image)
-        print(image, npimage)
+        return npimage 
+        print('retrieved image as numpy array with dimensions:', npimage.shape)
         #image.show()
         plt.imshow(npimage)
         plt.plot([200,500], [300,-100], lw=5, c='k')
