@@ -8,18 +8,18 @@ fig, ax = plt.subplots()
 plt.subplots_adjust(left=0.25, bottom=0.25)
 
 ## == static settings & built-in constants ==
-t = np.arange(0.0, 1.0, 0.001) # x-axis for plotting
+t = np.arange(0.0, 1.0, 1e-4) # x-axis for plotting
 default_params = collections.OrderedDict()
 ## (range from, range to, initial value)
-default_params['first_order_number']	=	  (-20, -12, 20)
-default_params['last_order_number']	=	   (-20, -4, 20)
-default_params['lambda_to_y_ofs']	=	     (-5, 1, 5)
-default_params['lambda_to_y_lin']	=	     (-1, .5, 1)
-default_params['lambda_to_y_quad']	=	    (-1, .2, 1)
+default_params['first_order_number']	=	  (-20, -18, 20)
+default_params['last_order_number']	=	   (-20, -6, 20)
+default_params['lambda_to_y_ofs']	=	     (-5, .67, 5)
+default_params['lambda_to_y_lin']	=	     (-1, -.08, 1)
+default_params['lambda_to_y_quad']	=	    (-1, -0.03, 1)
 default_params['lambda_to_y_cub']	=	     (-1, 0, 1)
 default_params['lambda_to_y_quart']	=	   (-1, 0, 1)
-default_params['x_to_lambda_ofs']	=	     (-1, .1, 1)
-default_params['x_to_lambda_lin']	=	     (-1, .1, 1)
+default_params['x_to_lambda_ofs']	=	     (-1, .335, 1)
+default_params['x_to_lambda_lin']	=	     (-1, -.05, 1)
 default_params['x_to_lambda_quad']	=	    (-1, 0, 1)
 
 
@@ -29,7 +29,7 @@ def update(val): ## update plots on manual parameter tuning
     # TODO define correct function:
     # starting
     lineindex = 0
-    for difrorder in range(int(paramsliders['first_order_number'].val), int(paramsliders['last_order_number'].val+1)):
+    for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
         yy = lambda_to_y(x_to_lambda(x,difrorder))
         print(x,yy)
         lines[lineindex].set_ydata(yy)
@@ -39,10 +39,9 @@ def update(val): ## update plots on manual parameter tuning
 paramsliders = {}
 sliderheight, sliderpos = .02, .02
 for key,item in default_params.items():
-    print('key,item', key,item)
     paramsliders[key] = matplotlib.widgets.Slider(plt.axes([0.25, sliderpos, 0.65, sliderheight]), key, item[0], item[2], valinit=item[1])
     paramsliders[key].on_changed(update)
-    sliderpos+=sliderheight*1.1
+    sliderpos += sliderheight*1.1
 
 def reset(event): 
     for key,item in paramsliders.items(): item.reset()
@@ -59,22 +58,34 @@ button.on_clicked(reset)
 
 
 ## == functions defining the geometrical transformation (x->grating, y->prism) ==
+def p(pname): return paramsliders[pname].val
 def x_to_lambda(xx, difrorder):
-    return difrorder*(paramsliders['x_to_lambda_ofs'].val + xx*paramsliders['x_to_lambda_lin'].val + xx**2*paramsliders['x_to_lambda_quad'].val)
+    return difrorder*(p('x_to_lambda_ofs') + xx*p('x_to_lambda_lin') + xx**2*p('x_to_lambda_quad'))
 def lambda_to_y(lam):
-    return paramsliders['lambda_to_y_ofs'].val + lam*paramsliders['lambda_to_y_lin'].val + lam**2*paramsliders['lambda_to_y_quad'].val
+    return p('lambda_to_y_ofs') + lam*p('lambda_to_y_lin') + lam**2*p('lambda_to_y_quad')
 
 
-## == plotting == 
+## == plotting the image == 
+raw_file_name = '../image_logs/output_debayered_.1s_ISO100_.cr2'
+from rawkit.raw import Raw
+from rawkit.options import interpolation
+raw_image = Raw(filename=raw_file_name)
+raw_image.options.interpolation = interpolation.amaze # or "amaze", see https://rawkit.readthedocs.io/en/latest/api/rawkit.html
+#raw_image_process = raw_image.process()
+#if raw_image_process == raw_image: print("they are identical")
+npimage = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
+print(npimage.shape) ## gives 1-d array of values
+ax.imshow((npimage-np.min(npimage)*.9)**.1, extent=[0,1,0,1],cmap=matplotlib.cm.gist_earth_r)
 
+## == plotting the diffr orders == 
 x = np.linspace(0,1,10) # image pixel range to analyze
 lines = []
-for difrorder in range(int(paramsliders['first_order_number'].val), int(paramsliders['last_order_number'].val+1)):
+for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
     yy = lambda_to_y(x_to_lambda(x,difrorder))
     print('plotting line', difrorder, 'with data x,y=', x, yy)
-    ll = ax.plot(x, yy, lw=2) ## , color='red'
+    ll = ax.plot(x, yy, lw=1) ## , color='red'
     print(ll)
     lines.append(ll[0])
-plt.axis([0, 1, -10, 10])
+#plt.axis([0, 1, -10, 10])
 
 plt.show()
