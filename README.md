@@ -3,13 +3,23 @@ Reduces an echelle spectrograph image into an optical spectrum. The image is ass
 
 ![sample echelle image](echelle-led.jpg)
 
-One needs an optical fibre with a mount, a collimating (~50mm) photographic lens, an optical prism, a 2" optical grating with 50-150 lines/mm blazed to as high angle as possible, and a (de-bayered) digital camera with a telephoto (~100-200mm) lens. And a computer with Python installed. The blazed grating is the only component that is hard to obtain, but sometimes one can be found e.g. on e-bay for less than $100-$200. Optical assembly takes several evenings, but it provides one with a spectrometer that can compete with professional $5000+ instruments.
-
-Such a spectrometer setup has numerous advantages: elimination of overlapping diffraction orders (many higher orders are recorded, but thanks to the prism they never overlap), reduced sensitivity to polarisation minimum losses on grating (the grating operates near optimum blazing angle), low noise (the CCD/CMOS sensors and accompanying electronics of modern digital cameras have developed into excellent, yet inexpensive, light detectors; multiple image pixels can also be averaged perpendicular to the line), and high resolution (the image is crossed multiple times by the consecutive portions of the spectrum, easily getting over 20 000 pixels across visible spectrum). Particularly when the camera sensor is debayered, one can record whole UVB-optical-NIR spectrum in single shot.
-
 What we shall get from this program is a calibrated curve of spectral intensity. 
 
 For convenience, the program should be able to control digital cameras with *libgphoto*.
+
+## optical & mechanical setup
+
+One needs an optical fibre with a mount, a collimating (~50mm) photographic lens, an optical prism, a 2" optical grating with 50-150 lines/mm blazed to as high angle as possible, and a (de-bayered) digital camera with a telephoto (~100-200mm) lens. And a computer with Python installed. The blazed grating is the only component that is hard to obtain, but sometimes one can be found e.g. on e-bay for less than $100-$200. Optical assembly takes several evenings, but it provides one with a spectrometer that can compete with professional $5000+ instruments.
+
+An independent suggestion commercial sources of optical components (many other possible exist): 
+ * 203 €    Echelle Grating 25 mm x 50 mm (best groove geometry to be established) https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1124
+ * 304 €    2x Ø1" 90° Off-Axis Parabolic Mirror https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7002
+ * 103 €    F2 Equilateral Dispersive Prism, 25 mm  https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=148
+ *  80 €    150x300 mm optical breadboard https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=159
+ * *sum = 680 €*
+
+Such a spectrometer setup has numerous advantages: elimination of overlapping diffraction orders (many higher orders are recorded, but thanks to the prism they never overlap), reduced sensitivity to polarisation minimum losses on grating (the grating operates near optimum blazing angle), low noise (the CCD/CMOS sensors and accompanying electronics of modern digital cameras have developed into excellent, yet inexpensive, light detectors; multiple image pixels can also be averaged perpendicular to the line), and high resolution (the image is crossed multiple times by the consecutive portions of the spectrum, easily getting over 20 000 pixels across visible spectrum). Particularly when the camera sensor is debayered, one can record whole UVB-optical-NIR spectrum in single shot.
+
 
 ## installation and basic camera testing
 
