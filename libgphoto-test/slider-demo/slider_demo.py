@@ -21,13 +21,13 @@ spectral_lines_minor_nm   = np.array([581.932, 597.553, 603.000, 621.728, 630.47
 default_params = collections.OrderedDict()
 ## == GUI-tunable settings ==
 ## (range from, range to, initial value)
-default_params['first_order_number']	=	   (-20,    -8, 20)
-default_params['last_order_number']	=	   (-20,    -3, 20)
-default_params['x_to_lambda_ofs']	=	   (-1e4,  150, 1e4)
-default_params['x_to_lambda_lin']	=	   (-1e4,    -100, 1e4)
-default_params['x_to_lambda_quad']	=	   (-10,      0, 10)
-default_params['lambda_to_y_ofs']	=	   (-5,        .67, 5)
-default_params['lambda_to_y_lin']	=	   (-1e-1,    2e-2, 1e-1)
+default_params['first_order_number']	=	   (-20,    8, 20)
+default_params['last_order_number']	=	   (-20,    20, 20)
+default_params['x_to_lambda_ofs']	=	   (-1e4,  -1000, 1e4)
+default_params['x_to_lambda_lin']	=	   (-1e4,    300, 1e4)
+#default_params['x_to_lambda_quad']	=	   (-10,      0, 10)
+default_params['lambda_to_y_ofs']	=	   (-1e1,       1/10, 1e1)
+default_params['lambda_to_y_lin']	=	   (-1e-2,    1e-2/10**2, 1e-2)
 default_params['lambda_to_y_quad']	=	   (-1e-3,    0e-1, 1e-3)
 default_params['lambda_to_y_cub']	=	   (-1e-4,    0e-1, 1e-4)
 default_params['lambda_to_y_quart']	=	   (-1e-5,   0e-12, 1e-5)
@@ -37,7 +37,7 @@ default_params['lambda_to_y_quart']	=	   (-1e-5,   0e-12, 1e-5)
 
 def p(pname): return paramsliders[pname].val
 def x_to_lambda(xx, difrorder):
-    return (p('x_to_lambda_ofs') + xx*p('x_to_lambda_lin') + xx**2*p('x_to_lambda_quad'))/difrorder
+    return -np.abs((p('x_to_lambda_ofs') + xx*p('x_to_lambda_lin'))/difrorder) ## XXX
 def lambda_to_y(lam):
     return p('lambda_to_y_ofs') + lam*p('lambda_to_y_lin') + lam**2*p('lambda_to_y_quad') + \
             lam**3*p('lambda_to_y_cub') + lam**4*p('lambda_to_y_quart')
@@ -97,13 +97,12 @@ lines = []
 specpts = []
 for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
     yy = lambda_to_y(x_to_lambda(x,difrorder))
-    print('plotting line', difrorder, 'with data x,y=', x, yy)
     ll = ax1.plot(x, yy, lw=1) ## , color='red'
     lines.append(ll[0])
 
-    print('  lambdas for 10 points = ', x_to_lambda(x, difrorder), 'for difrorder =', difrorder)
     spectral_lines_major_xs = np.interp(spectral_lines_major_nm, x_to_lambda(x, difrorder), x)
     spectral_lines_major_ys = lambda_to_y(spectral_lines_major_nm)
+    print('plotting line', difrorder, 'with data x,l, y=', x, x_to_lambda(x, difrorder), yy)
     print('  spectral_lines_major_xs =', spectral_lines_major_xs)
     print('  spectral_lines_major_ys =', spectral_lines_major_ys)
     specpts.append(ax1.scatter(spectral_lines_major_xs, spectral_lines_major_ys, s=5))
