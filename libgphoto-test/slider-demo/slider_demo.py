@@ -4,6 +4,31 @@ import matplotlib
 import matplotlib.pyplot as plt
 import collections
 
+
+"""
+Formulation of the problem:
+    * White-light collimated ray impinges (under angle α from its normal) a blazed diffraction grating (with Λ grooves/mm)
+    * It diffracts into multiple orders (e.g. 20-30 for an echelle grating under consideration) and 
+      part of the light is collected by a digital camera (inclined by angle ξ from the grating normal, which should be
+      given by finding the most efficient reflection on the blazed grating facets)
+    * The camera lens has a focal length F and projects light on a CMOS/CCD sensor of width W
+    * Given α, ξ, Λ, F and W, along with the selection of a integer diffraction order M,
+      how does position X on the sensor translate into wavelength λ?
+
+We know:
+    * Grating equation:     
+                                             sin α - sin β = Mλ/Λ,    
+      where β is the angle of diffracted ray.
+    * Position in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
+      position on X ∈ {0...1} corresponds to the angle ξ of a diffracted ray as β = (0.5-X) × W / 2F  -  ξ
+    * Thus we express the wavelength as
+                                 λ = Λ/M × [sin α - sin((0.5-X) × W / 2F  -  ξ)]
+     
+
+
+"""
+
+
 fig, (ax1, ax2) = plt.subplots(1,2)
 fig.subplots_adjust(left=0.05, right=0.95, bottom=0.27, top=0.99, hspace=0)
 
