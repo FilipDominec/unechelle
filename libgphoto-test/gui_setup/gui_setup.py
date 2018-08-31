@@ -17,14 +17,27 @@ Formulation of the problem:
 
 We know:
     * Grating equation:     
-                                                     λ = Λ sin β      / M
                                              sin α - sin β = Mλ/Λ,    
-      where β is the angle of diffracted ray.
-    * Position in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
-      position on X ∈ {0...1} corresponds to the angle ξ of a diffracted ray as β = (0.5-X) × W / 2F  -  ξ
+      where α, β are the angles of incident and diffracted rays.
+    * Normalized coordinate in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
+      any coordinate on sensor X ∈ {0...1} corresponds to the angle ξ of a diffracted ray as β = (0.5-X) × W / 2F  -  ξ
     * Thus we express the wavelength as
                                  λ = Λ/M × [sin α - sin((0.5-X) × W / 2F  -  ξ)]
      
+TODOs:
+
+    essential:
+        updating of spectral peaks upon param change
+        settings save
+        spectral reduction 
+
+    integration with hardware:
+        move the actual λ-x-y conversion and into a separate module: echelle_process.py
+
+    improvements:
+        implement image convolution for smoother spectra
+        HDR data composition
+
 
 
 """
@@ -43,21 +56,20 @@ spectral_lines_minor   = np.array([581.932, 597.553, 603.000, 621.728, 630.479, 
 default_params = collections.OrderedDict()
 ## == GUI-tunable settings ==
 ## (range from, range to, initial value)
-default_params['first_order_number']	=	   (-20,    8, 20)
+default_params['first_order_number']	=	   (-20,    1, 20)
 default_params['last_order_number']	=	   (-20,    20, 20)
 
 default_params['Λ groove spacing (μm)']	    =	   (0,  13.333, 30)
 default_params['α incident angle (rad)']    =	   (-1,  .4, 1)
-default_params['ξ camera angle (rad)']	    =	   (-1,  .2, 1)
+default_params['ξ camera inclination (rad)']	    =	   (-1,  .2, 1)
 default_params['F camera foc dist (mm)']    =	   (10,  150, 300)
 default_params['W camera CMOS width (mm)']  =	   (1,  24, 50)
 
-#default_params['x_to_lambda_quad']	=	   (-10,   0, 10)
-default_params['lambda_to_y_ofs']	=	   (-1,    .6, 1)
-default_params['lambda_to_y_lin']	=	   (-1,    .4, 1)
-default_params['lambda_to_y_quad']	=	   (-1,    .2, 1)
-default_params['lambda_to_y_cub']	=	   (-1,    0e-1, 1)
-default_params['lambda_to_y_quart']	=	   (-1,    0e-12, 1)
+default_params['lambda_to_y_ofs']	=	   (-5,    2, 5)
+default_params['prism_angle']	=	   (-2,    -1, 2)
+default_params['prism_n0']	=	   (1,    1.4, 2)
+default_params['prism_Sellmeyer_lambda0 (nm)']	=	   (100,    250, 500)
+default_params['prism_Sellmeyer_F0']	=	   (-1,    .1, 1)
 
 ## == functions defining the geometrical transformation (x->grating, y->prism) ==
 
@@ -65,33 +77,47 @@ def p(pname): return paramsliders[pname].val
 def x_to_lambda(xx, difrorder):
     grooved = p('Λ groove spacing (μm)')       * 1e-6
     iangle  = p('α incident angle (rad)')
-    cangle  = p('ξ camera angle (rad)')
+    cincli  = p('ξ camera inclination (rad)')
     fdist   = p('F camera foc dist (mm)')      * 1e-3
     cmosw   = p('W camera CMOS width (mm)')    * 1e-3
     #              λ = Λ/M × [sin α - sin((0.5-X) × W / 2F  -  ξ)]
-    #print(" grooved , iangle  , cangle  , fdist   , cmosw  = ", grooved , iangle  , cangle  , fdist   , cmosw   )
-    print(xx, grooved/difrorder, (np.sin(iangle)-np.sin((.5-xx)*cmosw/2/fdist - cangle)))
-    return grooved/difrorder*(np.sin(iangle)-np.sin((.5-xx)*cmosw/2/fdist - cangle))
+    #print(" grooved , iangle  , cincli  , fdist   , cmosw  = ", grooved , iangle  , cincli  , fdist   , cmosw   )
+    print(difrorder, (np.sin(iangle)-np.sin((.5-xx[::5])*cmosw/2/fdist - cincli)))
+    return grooved/difrorder*(np.sin(iangle)-np.sin((.5-xx)*cmosw/2/fdist - cincli))
 
 def lambda_to_y(ll):
-    lam = ll / 500e-9 # normalisation against the typical wl.
-    return p('lambda_to_y_ofs') + lam*p('lambda_to_y_lin') + lam**2*p('lambda_to_y_quad') + \
-            lam**3*p('lambda_to_y_cub') + lam**4*p('lambda_to_y_quart')
+    def sellmeyer(l):
+        n0 = p('prism_n0') #1239.8e-9 / 5
+        lambda0 = p('prism_Sellmeyer_lambda0 (nm)')*1e-9 #1239.8e-9 / 5
+        F0 = p('prism_Sellmeyer_F0')
+        n = n0 + (F0*lambda0**-2/(lambda0**-2-l**-2))**.5
+        print( 'n0, F0, lambda0' , n0, F0, lambda0, l,)
+        print('n =' , n)
+        return  n
+    def symmetricprism(l):
+        #incident_vert_inclination = -.5
+        prism_angle = p('prism_angle')         # (rad)
+        n = sellmeyer(l)
+        return 2 * (np.arcsin(n * np.sin(prism_angle/2)) - prism_angle/2)   # refraction on a dispersive prism
+
+    cmosh =  p('W camera CMOS width (mm)')    * 1e-3   * 16/24 ## fixme: adapt for non-24x16mm frames
+    #return p('lambda_to_y_ofs') + lam*p('prism_angle') + lam**2*p('lambda_to_y_quad') + \
+            #lam**3*p('lambda_to_y_cub') + lam**4*p('lambda_to_y_quart')
+    return p('lambda_to_y_ofs') + symmetricprism(ll)
 
 
 ## == User interaction ==
 
 def update(val): ## update plots on manual parameter tuning
-    # TODO define correct function:
-    # starting
     lineindex = 0
     for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
         yy = lambda_to_y(x_to_lambda(x,difrorder))
         lines[lineindex].set_ydata(yy)
         lineindex+=1
-
+    # TODO update spectral peaks, too
         # specpts[lineindex].set_offsets(spectral_lines_major_xs, spectral_lines_major_ys)
     fig.canvas.draw_idle()
+
 paramsliders = {}
 sliderheight, sliderpos = .02, .02
 for key,item in list(default_params.items())[::-1]:
@@ -100,8 +126,13 @@ for key,item in list(default_params.items())[::-1]:
     sliderpos += sliderheight*1.4 if key in ('x_to_lambda_ofs','lambda_to_y_ofs') else sliderheight
 
 def reset_values(event): 
-    for key,item in paramsliders.items(): item.reset()
-button = matplotlib.widgets.Button(plt.axes([0.8, 0.025, 0.1, 0.04]), 'Reset', color='.7', hovercolor='.9')
+    #for key,item in paramsliders.items(): item.reset()
+    with open(settings, 'w') as of:
+        for key,item in paramsliders.items(): 
+            print(key,'=',item)
+            of.write(key,'=',item)
+
+button = matplotlib.widgets.Button(plt.axes([0.8, 0.025, 0.1, 0.04]), 'Save settings', color='.7', hovercolor='.9')
 button.on_clicked(reset_values)
 
 #rax1 = plt.axes([0.025, 0.5, 0.15, 0.15])
@@ -124,11 +155,13 @@ raw_image.options.interpolation = interpolation.amaze # or "amaze", see https://
 #raw_image_process = raw_image.process()
 #if raw_image_process == raw_image: print("they are identical")
 npimage = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
+#npimage = npimage[::5,::5] ## optional: decimate data
 print(npimage.shape) ## gives 1-d array of values
-ax1.imshow((npimage-np.min(npimage)*.9)**.1, extent=[0,1,0,1],cmap=matplotlib.cm.gist_earth_r)
+#ax1.imshow((npimage-np.min(npimage)*.9)**.1, extent=[0,1,0,1],cmap=matplotlib.cm.gist_earth_r)
+ax1.imshow(np.log10(npimage+1e-7), extent=[0,1,0,1],cmap=matplotlib.cm.gist_earth_r)
 
 ## == plotting the diffr orders == 
-x = np.linspace(0,1,5) # image pixel range to analyze
+x = np.linspace(-1, 2, 20) # image pixel range to analyze
 lines = []
 specpts = []
 for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
@@ -136,7 +169,7 @@ for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+
     linear_ys       = lambda_to_y(linear_lambdas)
 
     print('plotting diffr. order', difrorder, 'with data x,l,y=', x, linear_lambdas, linear_ys)
-    plotline = ax1.plot(x, linear_ys, lw=1) ## , color='red'
+    plotline = ax1.plot(x, linear_ys, lw=1, ls='--' if difrorder==1 else '-') ## , color='red'
     lines.append(plotline[0])
 
     major_xs = np.interp(spectral_lines_major, linear_lambdas, x)
