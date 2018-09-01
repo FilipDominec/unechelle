@@ -48,10 +48,14 @@ fig.subplots_adjust(left=0.05, right=0.95, bottom=0.30, top=0.99, hspace=0)
 
 ## == static settings & built-in constants ==
 t = np.arange(0.0, 1.0, 1e-4) # x-axis for plotting
+
 spectral_peaks_major   = np.array([585.249, 614.306, 640.225, 703.241]) / 1e9
-spectral_peaks_midi   =  np.array([576.4674, 588.189,594.483, 607.434, 609.616, 616.359, 626.649, 633.443,  
+spectral_peaks_midi   =  np.array([
+        576.4674, 588.189,594.483, 607.434, 609.616, 616.359, 626.649, 633.443,  
         638.299, 650.653, 667.828, 671.704, 692.947, 724.517]) / 1e9
-spectral_peaks_minor   = np.array([581.932, 597.553, 603.000, 621.728, 630.479, 653.288, 659.895, 717.394, 743.890]) / 1e9
+spectral_peaks_minor   = np.array([
+    334.148, 365.0146, 365.4833, 366.3276, 404.6563, 407.7831, 435.8328, 491.6068, 546.0735, 576.9598, 579.0640,
+    581.932, 597.553, 603.000, 621.728, 630.479, 653.288, 659.895, 717.394, 743.890]) / 1e9
 #see also http://www.astrosurf.com/buil/us/spe2/calib2/neon.dat etc.
 
 
