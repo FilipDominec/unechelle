@@ -54,6 +54,7 @@ spectral_peaks_midi   =  np.array([576.4674, 588.189,594.483, 607.434, 609.616, 
 spectral_peaks_minor   = np.array([581.932, 597.553, 603.000, 621.728, 630.479, 653.288, 659.895, 717.394, 743.890]) / 1e9
 #see also http://www.astrosurf.com/buil/us/spe2/calib2/neon.dat etc.
 
+
 default_params = collections.OrderedDict()
 ## == GUI-tunable settings ==
 ## (range from, range to, initial value)
@@ -225,7 +226,16 @@ for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+
             plot_lambdas.append(l)
         except IndexError:
             pass
-    spectral_curves.append(ax2.plot(np.array(plot_lambdas)*1e9, np.array(plot_intensity), lw=.6)[0])
+    spectral_curves.append(ax2.plot(np.array(plot_lambdas)*1e9, np.array(plot_intensity), lw=1.5, alpha=.8)[0])
+
+## generate artificial neon spectrum
+artif_x = np.linspace(300e-9, 1100e-9, 2000)
+artif_y = np.zeros_like(artif_x) + 1
+for peak in spectral_peaks_major: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*100
+for peak in spectral_peaks_midi:  artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*30
+for peak in spectral_peaks_minor: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*10
+ax2.plot(artif_x*1e9, artif_y, lw=.6, c='k', ls='--')
+
 
 ax2.set_yscale('log')
 ax2.grid(True)
