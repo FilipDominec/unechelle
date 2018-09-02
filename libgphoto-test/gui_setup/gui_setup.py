@@ -105,13 +105,12 @@ def lambda_to_x(ll, difrorder): ## for x in (0 ... 1) numerical inversion of the
 
 def lambda_to_y(ll):
     def sellmeyer(l):
-        n0      = p('prism_n0') #1239.8e-9 / 5
-        lambda0 = p('prism_Sellmeyer_lambda0 (nm)')*1e-9 #1239.8e-9 / 5
+        n0      = p('prism_n0') 
+        lambda0 = p('prism_Sellmeyer_lambda0 (nm)')*1e-9 
         F0      = p('prism_Sellmeyer_F0')
         n       = n0 + (F0*lambda0**-2/(lambda0**-2-l**-2))**.5
         return n
     def symmetricprism(l):
-        #incident_vert_inclination = -.5
         prism_angle = p('prism_angle')         # (rad)
         n = sellmeyer(l)
         return 2 * (np.arcsin(n * np.sin(prism_angle/2)) - prism_angle/2)   # refraction on a dispersive prism
@@ -172,15 +171,12 @@ def composite_spectrum(partial_lambdas, partial_intensities):
     for partial_lambda, partial_intensity in zip(partial_lambdas, partial_intensities):
         ## generate a quasi-rectangular window for smooth spectral stitching 
         partial_lambda, partial_intensity = np.array(partial_lambda), np.array(partial_intensity)
-        #ax2.plot(partial_lambda*1e9, partial_intensity, c='r')
-        #ax2.plot(composite_lambda*1e9, composite_intensity, c='b')
         q = (partial_lambda-np.min(partial_lambda)) / (np.max(partial_lambda) - np.min(partial_lambda))
         weight_func     = np.sin(q*np.pi)**.8  *  (np.sign(q)+1)  *  (np.sign(1-q)+1) / 4
 
         composite_intensity += np.interp(composite_lambda, partial_lambda, weight_func * partial_intensity)
         composite_weight    += np.interp(composite_lambda, partial_lambda, weight_func                    )
         print('SUM', np.sum(composite_intensity), np.sum(composite_weight))
-        #ax2.plot(np.array(partial_lambda)*1e9, partial_intensity*weight_func, c='r')
     return composite_lambda, composite_intensity/composite_weight
 
 
