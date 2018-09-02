@@ -38,6 +38,7 @@ Derivation of the equations used:
 TODOs:
 
     * interpolate to a single spectral curve
+    * rewrite all func to avoid global variables
 
     integration with hardware:
         move the actual λ-x-y conversion and into a separate module: echelle_process.py
@@ -51,7 +52,7 @@ TODOs:
 ## Static settings & built-in constants
 raw_file_name                   = '../image_logs/output_debayered_.1s_ISO100_.cr2'      # FIXME
 settingsfilename                = './echelle_parameters.dat'
-vertical_convolution_length_px  = 10           ## adjust if orders start to overlap (e.g. with higher blazing angle)
+vertical_convolution_length_px  = 30           ## adjust if orders start to overlap (e.g. with higher blazing angle)
 cmos_aspect_ratio               = 16./24        ## for "APS-C"; change if using CMOS/CCD with different aspect
 decimate_factor                 = 4             ## less than 2 introduces noise from Bayer mask residuals
 
@@ -148,13 +149,53 @@ npimage -= np.min(npimage)
 fig, (ax1, ax2) = plt.subplots(1,2)
 fig.subplots_adjust(left=0.05, right=0.95, bottom=0.30, top=0.99, hspace=0)
 
-def update(val): ## update plots on manual parameter tuning
+
+def extract_partial_spectrum(im, difrorder):
+    plot_lambdas_ = []
+    plot_intensity_ = []
+    imheight, imwidth = im.shape
+    for xpixel in range(imwidth):
+        l = x_to_lambda(xpixel/imwidth, difrorder)
+        y = lambda_to_y(l)
+        if y>0 and y<1:
+            ypixel = int((1.0-lambda_to_y(l)) * imheight)
+            plot_intensity_.append(im[ypixel, xpixel])      ## TODO non-interactive spectral processnig  HERE
+            plot_lambdas_.append(l)
+    return plot_lambdas_, plot_intensity_
+
+def composite_spectrum(partial_lambdas, partial_intensities):
+    composite_lambda    = np.linspace(min([np.min(pl) for pl in partial_lambdas]), 
+                max([np.max(pl) for pl in partial_lambdas]), 
+                sum(np.size(pl) for pl in partial_lambdas))
+    composite_intensity = np.zeros_like(composite_lambda)
+    composite_weight    = np.zeros_like(composite_lambda)
+    for partial_lambda, partial_intensity in zip(partial_lambdas, partial_intensities):
+        ## generate a quasi-rectangular window for smooth spectral stitching 
+        partial_lambda, partial_intensity = np.array(partial_lambda), np.array(partial_intensity)
+        #ax2.plot(partial_lambda*1e9, partial_intensity, c='r')
+        #ax2.plot(composite_lambda*1e9, composite_intensity, c='b')
+        q = (partial_lambda-np.min(partial_lambda)) / (np.max(partial_lambda) - np.min(partial_lambda))
+        weight_func     = np.sin(q*np.pi)**.8  *  (np.sign(q)+1)  *  (np.sign(1-q)+1) / 4
+
+        composite_intensity += np.interp(composite_lambda, partial_lambda, weight_func * partial_intensity)
+        composite_weight    += np.interp(composite_lambda, partial_lambda, weight_func                    )
+        print('SUM', np.sum(composite_intensity), np.sum(composite_weight))
+        #ax2.plot(np.array(partial_lambda)*1e9, partial_intensity*weight_func, c='r')
+    return composite_lambda, composite_intensity/composite_weight
+
+
+
+
+## GUI: update plots on manual parameter tuning
+def update(val): 
+    partial_lambdas, partial_intensities = ([], [])
+    cc = []
     for lineindex, difrorder in enumerate(range(int(p('first_order_number')), int(p('last_order_number')+1))):
         x = np.linspace(0, 1, 20) 
         yy = lambda_to_y(x_to_lambda(x, difrorder))
         lines[lineindex].set_data(x, yy)
 
-        # update spectral peaks, too
+        ## update spectral peaks      ## TODO make more general
         major_xs, major_ys = lambda_to_x(spectral_peaks_major, difrorder), lambda_to_y(spectral_peaks_major)
         peaks_major[lineindex].set_data(major_xs, major_ys)
 
@@ -164,17 +205,18 @@ def update(val): ## update plots on manual parameter tuning
         minor_xs, minor_ys = lambda_to_x(spectral_peaks_minor, difrorder), lambda_to_y(spectral_peaks_minor)
         peaks_minor[lineindex].set_data(minor_xs, minor_ys)
 
-        plot_lambdas, plot_intensity = ([], [])
-        imheight, imwidth = npimage.shape
-        for xpixel in range(imwidth):
-            l = x_to_lambda(xpixel/imwidth, difrorder)
-            y = lambda_to_y(l)
-            if y>0 and y<1:
-                ypixel = int((1.0-lambda_to_y(l)) * imheight)
-                plot_intensity.append(npimage[ypixel, xpixel])      ## TODO non-interactive spectral processnig  HERE
-                plot_lambdas.append(l)
+
+        plot_lambdas, plot_intensity = extract_partial_spectrum(npimage, difrorder)
+        partial_lambdas.append(plot_lambdas)
+        partial_intensities.append(plot_intensity)
         spectral_curves[lineindex].set_data(np.array(plot_lambdas)*1e9, np.array(plot_intensity))
+
+    cl, ci = composite_spectrum(partial_lambdas, partial_intensities)
+    print(ci)
+    composite_curve.set_data(np.array(cl)*1e9, ci)
+
     fig.canvas.draw_idle()
+
 
 ## GUI: Known spectral peaks for neon lamp 
 spectral_peaks_major   = np.array([585.249, 614.306, 640.225, 703.241]) / 1e9
@@ -208,8 +250,8 @@ button = matplotlib.widgets.Button(plt.axes([.8, 0.02, 0.1, sliderheight]), 'Sav
 button.on_clicked(save_values)
 
 
-## GUI: plotting the RAW image
-im = ax1.imshow(np.log10(npimage), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
+## GUI: plotting the RAW image ## TODO employ the Actor class in matplotlib to make updates more responsive
+im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e5), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
 
 ## GUI: Prepare (empty) matplotlib curve objects for plotting the diffraction orders and spectra
 lines, peaks_major, peaks_midi, peaks_minor, spectral_curves = ([], [], [], [], [])
@@ -221,9 +263,10 @@ for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+
     peaks_midi.append(ax1.plot([], [], marker='D', lw=0, markersize=6, markeredgecolor=color, markerfacecolor='none',alpha=.6)[0])
     peaks_minor.append(ax1.plot([], [], marker='D', lw=0, markersize=4, markeredgecolor=color, markerfacecolor='none',alpha=.4)[0])
     spectral_curves.append(ax2.plot([], [], lw=1.5, alpha=.8, color=color)[0])
+    composite_curve = ax2.plot([], [], lw=2, color='k')[0]
 update(None)
 
-## GUI: In the right panel: Generate artificial neon spectrum for verification
+## GUI: In the right panel: Generate artificial neon spectrum for verification ## TODO make more general
 artif_x = np.linspace(300e-9, 1100e-9, 2000)
 artif_y = np.zeros_like(artif_x) + 1
 for peak in spectral_peaks_major: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*100
