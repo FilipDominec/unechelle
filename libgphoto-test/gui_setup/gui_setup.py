@@ -27,6 +27,9 @@ Derivation of the equations used:
     * Grating equation:     
                                              sin α - sin β = Mλ/Λ,    
       where α, β are the angles of incident and diffracted rays.
+
+      TODO: Take into account also the vertical inclination due to previous passing through the prism.
+
     * Normalized coordinate in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
       any coordinate on sensor X ∈ {0...1} corresponds to the angle ξ of a diffracted ray as β = (0.5-X) × W / 2F  -  ξ
     * Thus we express the wavelength as
@@ -48,7 +51,7 @@ TODOs:
 ## Static settings & built-in constants
 raw_file_name                   = '../image_logs/output_debayered_.1s_ISO100_.cr2'      # FIXME
 settingsfilename                = './echelle_parameters.dat'
-vertical_convolution_length_px  = 100           ## adjust if orders start to overlap (e.g. with higher blazing angle)
+vertical_convolution_length_px  = 10           ## adjust if orders start to overlap (e.g. with higher blazing angle)
 cmos_aspect_ratio               = 16./24        ## for "APS-C"; change if using CMOS/CCD with different aspect
 decimate_factor                 = 4             ## less than 2 introduces noise from Bayer mask residuals
 
@@ -105,8 +108,6 @@ def lambda_to_y(ll):
         lambda0 = p('prism_Sellmeyer_lambda0 (nm)')*1e-9 #1239.8e-9 / 5
         F0      = p('prism_Sellmeyer_F0')
         n       = n0 + (F0*lambda0**-2/(lambda0**-2-l**-2))**.5
-        #print('n0, F0, lambda0' , n0, F0, lambda0, l,)
-        #print('n =' , n)
         return n
     def symmetricprism(l):
         #incident_vert_inclination = -.5
@@ -123,17 +124,13 @@ def lambda_to_y(ll):
 
 ## Loading and pre-processing the RAW image
 raw_image = Raw(filename=raw_file_name)
-tt = time.time()
 raw_image.options.interpolation = interpolation.linear # n.b. "linear" and "amaze" have the same effect
 npimage = np.array(raw_image.raw_image(include_margin=False), dtype=float)  # returns: 2D np. array
-print(time.time()-tt)
 
-
-## vertical convolution to employ the multi-megapixel image and reduce noise 
+## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
 #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
 vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
 npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
-
 
 ## optional: decimate data for faster processing
 npimage = ndimage.convolve(npimage, np.ones([decimate_factor,decimate_factor])/decimate_factor**2)
@@ -168,14 +165,14 @@ def update(val): ## update plots on manual parameter tuning
         peaks_minor[lineindex].set_data(minor_xs, minor_ys)
 
         plot_lambdas, plot_intensity = ([], [])
-        for xpixel in range(npimage.shape[1]):
-            l = x_to_lambda(xpixel/npimage.shape[1], difrorder)
-            ypixel = int((1.0-lambda_to_y(l)) * npimage.shape[0])
-            try: 
+        imheight, imwidth = npimage.shape
+        for xpixel in range(imwidth):
+            l = x_to_lambda(xpixel/imwidth, difrorder)
+            y = lambda_to_y(l)
+            if y>0 and y<1:
+                ypixel = int((1.0-lambda_to_y(l)) * imheight)
                 plot_intensity.append(npimage[ypixel, xpixel])      ## TODO non-interactive spectral processnig  HERE
                 plot_lambdas.append(l)
-            except IndexError:
-                pass
         spectral_curves[lineindex].set_data(np.array(plot_lambdas)*1e9, np.array(plot_intensity))
     fig.canvas.draw_idle()
 
@@ -202,35 +199,39 @@ for key,item in list(default_params.items())[::-1]:
 
 ## GUI: Option to save current parameter values
 def save_values(event): 
-    #for key,item in paramsliders.items(): item.save()
     with open('echelle_settings.dat', 'w') as of:
         for key,item in paramsliders.items(): 
-            print(key,'=',item.val)
-            of.write(key + ' '*(40-len(key)) + ' = ' + str(item.val)+'\n')
+            save_line = key + ' '*(40-len(key)) + ' = ' + str(item.val)
+            print(save_line)
+            of.write(save_line+'\n')
 button = matplotlib.widgets.Button(plt.axes([.8, 0.02, 0.1, sliderheight]), 'Save settings', color='.7', hovercolor='.9')
 button.on_clicked(save_values)
 
 
-
 ## GUI: plotting the RAW image
-im = ax1.imshow(np.log10(npimage), extent=[0,1,0,1], cmap=matplotlib.cm.gist_earth_r)
+im = ax1.imshow(np.log10(npimage), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
 
 ## GUI: Prepare (empty) matplotlib curve objects for plotting the diffraction orders and spectra
 lines, peaks_major, peaks_midi, peaks_minor, spectral_curves = ([], [], [], [], [])
 for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
-    lines.append(ax1.plot([], [], lw=1, ls='--' if difrorder==1 else '-')[0]) 
-    peaks_major.append(ax1.plot([], [], marker='D', lw=0, markersize=8, markeredgecolor='k', markerfacecolor='none')[0])
-    peaks_midi.append(ax1.plot([], [], marker='D', lw=0, markersize=6, markeredgecolor='k', markerfacecolor='none',alpha=.6)[0])
-    peaks_minor.append(ax1.plot([], [], marker='D', lw=0, markersize=4, markeredgecolor='k', markerfacecolor='none',alpha=.4)[0])
-    spectral_curves.append(ax2.plot([], [], lw=1.5, alpha=.8)[0])
+    leftpanelline = ax1.plot([], [], lw=1, ls='--' if difrorder==1 else '-')[0]
+    color=leftpanelline.get_color()
+    lines.append(leftpanelline) 
+    peaks_major.append(ax1.plot([], [], marker='D', lw=0, markersize=8, markeredgecolor=color, markerfacecolor='none')[0])
+    peaks_midi.append(ax1.plot([], [], marker='D', lw=0, markersize=6, markeredgecolor=color, markerfacecolor='none',alpha=.6)[0])
+    peaks_minor.append(ax1.plot([], [], marker='D', lw=0, markersize=4, markeredgecolor=color, markerfacecolor='none',alpha=.4)[0])
+    spectral_curves.append(ax2.plot([], [], lw=1.5, alpha=.8, color=color)[0])
 update(None)
 
-## In the right panel: Generate artificial neon spectrum for verification
+## GUI: In the right panel: Generate artificial neon spectrum for verification
 artif_x = np.linspace(300e-9, 1100e-9, 2000)
 artif_y = np.zeros_like(artif_x) + 1
-#for peak in spectral_peaks_major: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*100
-#for peak in spectral_peaks_midi:  artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*30
-#for peak in spectral_peaks_minor: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*10
+for peak in spectral_peaks_major: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*100
+for peak in spectral_peaks_midi:  artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*30
+for peak in spectral_peaks_minor: artif_y += np.exp(-(artif_x-peak)**2 * 1e9**2)*10
+ax2.plot(artif_x*1e9, artif_y, lw=.6, c='k', ls='-.')
+
+artif_y = np.zeros_like(artif_x) + 1
 wls,intenss = np.genfromtxt('../../spectral_data/neon-nist-cropped.dat', unpack=True)
 for wl,intens in zip(wls,intenss): 
     artif_y += np.exp(-(artif_x-wl/1e9)**2 * 1e9**2)*intens**3/1e10
