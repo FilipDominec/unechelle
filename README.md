@@ -71,7 +71,7 @@ Once the spectral orders are matched by corresponding curves, you can save the b
 
 ![A screenshot of the GUI with properly aligned lines above several diffraction orders](gui_screenshot_m.png)
 
-A detail on the optical spectrum follows; the dynamic range is roughly 500-1000, the effective spectral resolution < 2 nm in the visible range. Much better results can be expected from more carefully aligned optics.
+A detail on the optical spectrum follows; the dynamic range is roughly 500-1000, the effective spectral resolution < 2 nm in the visible range. Much better results can be expected from better stray-light shielding and carefully aligned optics. The coloured lines come from individual diffraction orders, the thick black line is the composite spectrum. Thin dashed and dash-dotted lines indicate a partial correspondence with the spectral lines tabulated by NIST and astrosurf.fr, respectively.
 
 ![Example spectrum](example_spectrum.png)
 
