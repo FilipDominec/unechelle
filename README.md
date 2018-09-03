@@ -75,12 +75,16 @@ A detail on the optical spectrum follows; the dynamic range is roughly 500-1000,
 
 ![Example spectrum](example_spectrum.png)
 
+## what is not yet done
 
+* cleanup of the python scripts/modules and export of the spectrum as a data file (easy)
+* amplitude calibration (using halogen lamp or solar spectrum?)
+* higher dynamic range by automatic weighted averaging of images with different shutter speeds 
 
-## camera debayering & some useful links
+## camera notes & some useful links
 
 Camera sensor comparison, showing the Canon 350D or other second hand DSLRs are on par with (much more expensive) dedicated scientific cameras: http://www.clarkvision.com/articles/digital.sensor.performance.summary/
 
-Removing the glass filter (guide here http://www.12dstring.me.uk/350dmod.htm) and the R-G-B-G color matrix (i.e., debayering, here https://www.lifepixel.com/tutorials/infrared-diy-tutorials/canon-rebel-xt-350d) significantly improves the wavelength range from UV to infrared. Debayering the CMOS sensor of a camera had almost no effect for visible-light sensitivity, since on the one hand it removed the color filters (good), but it also removed the microlens array (bad), as demonstrated https://stargazerslounge.com/topic/166334-debayering-a-dslrs-bayer-matrix/?page=10.
+Removing the glass filter (guide here http://www.12dstring.me.uk/350dmod.htm) and the R-G-B-G color matrix (i.e., **debayering**, here https://www.lifepixel.com/tutorials/infrared-diy-tutorials/canon-rebel-xt-350d) significantly improves the wavelength range from UV to infrared. Debayering the CMOS sensor of a camera had almost no effect for visible-light sensitivity, since on the one hand it removed the color filters (good), but it also removed the microlens array (bad), as demonstrated https://stargazerslounge.com/topic/166334-debayering-a-dslrs-bayer-matrix/?page=10.
 
 Ideas for future: Could the spectral range be possibly extended into the mid-IR through covering a part of the CMOS sensor by a thin https://en.wikipedia.org/wiki/Photon_upconversion layer? Could the microlens array be imprinted into a silicone mold, and then renewed using some UV-transparent resin? 
