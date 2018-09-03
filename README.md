@@ -9,7 +9,15 @@ For convenience, the program should be able to control digital cameras with *lib
 
 ## optical & mechanical setup
 
-One needs an optical fibre with a mount, a collimating (~50mm) photographic lens, an optical prism, a 2" optical grating with 50-150 lines/mm blazed to as high angle as possible, and a (de-bayered) digital camera with a telephoto (~100-200mm) lens. And a computer with Python installed. The blazed grating is the only component that is hard to obtain, but sometimes one can be found e.g. on e-bay for less than $100-$200. Optical assembly takes several evenings, but it provides one with a spectrometer that can compete with professional $5000+ instruments.
+The optical path of the ray consists of 
+1. a fibre with a mount, 
+1. a collimating (~50mm) photographic lens (or a hollow mirror), 
+1. a dispersive glass prism
+1. a grating with 50-150 lines/mm, blazed to as high angle as possible
+1. telephoto (~80-150mm) lens
+1. and a digital camera, preferentially with the Bayer's color filter carefully scratched off the CMOS sensor.
+
+Also needed is any reasonably powered computer with Linux&Python3. The blazed grating may be hard to obtain, but sometimes one can be found e.g. on e-bay for less than $100-$200. The same holds for the debayered camera. Optical assembly and tuning then takes several evenings, but it provides one with a spectrometer that can compete with professional $5000+ instruments.
 
 ![prototype optics on a concrete-cast optical table](prototype_optics_m.jpg)
 
@@ -21,7 +29,7 @@ Such a spectrometer setup has numerous advantages over a single-grating spectrom
  * spectral width given by the silicon detector (particularly when the camera sensor is debayered, one can record whole UVB-optical-NIR spectrum in single shot.
 
 A tentative bill of material (note that many other commercial suppliers exist): 
- * 0-100 €      Reused digital single-lens camera (found or bought second-hand up to 100 €)
+ * 0-100 €      Reused digital single-lens camera - Canon 350D (found or bought second-hand up to 100 €)
  *   5 €	lens adapter ring for the DSLR
  *  15 €	aftermarket AC power supply for the DSLR
  * 203 €	[https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=1124](Echelle Grating 25 mm x 50 mm)  (best groove geometry needs to be established)
@@ -31,7 +39,7 @@ A tentative bill of material (note that many other commercial suppliers exist):
  *  20 €	3D-printing a box of black PLA (optional)
  * *sum = 650-750 €*
 
-## Installation and basic camera testing 
+## installation and basic camera testing 
 
 This procedure was tested on Ubuntu 18.04. It should be easily adapted for other linux distributions, and theoretically one should be able to run the scripts on other operating systems, too. 
 
@@ -58,11 +66,18 @@ This procedure was tested on Ubuntu 18.04. It should be easily adapted for other
 	./scripts/gui_setup/gui_setup.py
 
 
+
 Once the spectral orders are matched by corresponding curves, you can save the by clicking the ```Save parameters``` button. 
 
 ![A screenshot of the GUI with properly aligned lines above several diffraction orders](gui_screenshot_m.png)
 
-## Some useful links
+A detail on the optical spectrum follows; the dynamic range is roughly 500-1000, the effective spectral resolution < 2 nm in the visible range. Much better results can be expected from more carefully aligned optics.
+
+![Example spectrum](example_spectrum.png)
+
+
+
+## camera debayering & some useful links
 
 Camera sensor comparison, showing the Canon 350D or other second hand DSLRs are on par with (much more expensive) dedicated scientific cameras: http://www.clarkvision.com/articles/digital.sensor.performance.summary/
 
