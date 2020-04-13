@@ -34,6 +34,8 @@ Derivation of the equations used:
       where α, β are the angles of incident and diffracted rays.
 
       TODO: Take into account also the vertical inclination due to previous passing through the prism.
+      TODO2: Allow for image rotattion!
+      TODO3: Could this be speeded up? https://stackoverflow.com/questions/7878398/how-to-extract-an-arbitrary-line-of-values-from-a-numpy-array
 
     * Normalized coordinate in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
       any coordinate on sensor X ∈ {0...1} corresponds to the angle ξ of a diffracted ray as β = (0.5-X) × W / 2F  -  ξ
