@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import numpy as np
+import time
 
 import gphoto2 as gp
 
@@ -33,12 +34,13 @@ from PIL import Image
 from scipy import ndimage 
 #import matplotlib.pyplot as plt
 
-shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 1
+shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 3
 iso             = sys.argv[2] if len(sys.argv)>2 else 100
 comment         = sys.argv[3] if len(sys.argv)>3 else ''
 
 #def get_img(camera, imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
 def main():
+    t0 = time.time()
     logging.basicConfig( format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
     gp.check_result(gp.use_python_logging())
     print('Establishing communication with the camera (wait few seconds)')
@@ -46,7 +48,7 @@ def main():
     gp.check_result(gp.gp_camera_init(camera))
     # required configuration will depend on camera type!
     config = gp.check_result(gp.gp_camera_get_config(camera))
-    print('Camera ready')
+    print(time.time()-t0, 'Camera ready')
 
     # TODO  get the list of 'gp_abilities_list_get_abilities' or something like that ? 
     #  --> find out how to set image format
@@ -56,13 +58,21 @@ def main():
         if OK >= gp.GP_OK:
             widget_type = gp.check_result(gp.gp_widget_get_type(widget))
             gp.check_result(gp.gp_widget_set_value(widget, value))
-            gp.check_result(gp.gp_camera_set_config(camera, config))
+            print(gp.check_result(gp.gp_camera_set_config(camera, config)))
         else:
             print("Error setting value %s for %s using widget %s" % (value, name, widget))
     #my_set(name='imageformat', value='Large Fine JPEG')
     my_set(name='imageformat', value='RAW')
-    my_set(name='shutterspeed', value='{}'.format(shutterspeed))
-    my_set(name='iso', value='{}'.format(iso))
+
+    #my_set(name='iso', value='{}'.format(iso))
+    my_set(name='iso', value='1600') # does '3200' offer advantage over '1600' ?
+
+    my_set(name='shutterspeed', value='30')
+    #my_set(name='shutterspeed', value='1/10')
+
+    #my_set(name='shutterspeed', value='{}'.format(shutterspeed))
+    #for s in ('1/10','1/100'):
+    #my_set(name='shutterspeed', value=s)
 
     # find the image format config item
     OK, image_format = gp.gp_widget_get_child_by_name(config, 'imageformat')
@@ -73,22 +83,22 @@ def main():
     # need to set this on my Canon 350d to get preview to work at all
     OK, capture_size_class = gp.gp_widget_get_child_by_name(config, 'capturesizeclass')
     if OK >= gp.GP_OK:
-        # set value
         value = gp.check_result(gp.gp_widget_get_choice(capture_size_class, 2))
-        gp.check_result(gp.gp_widget_set_value(capture_size_class, value))
-        # set config
-        gp.check_result(gp.gp_camera_set_config(camera, config))
-
+        gp.check_result(gp.gp_widget_set_value(capture_size_class, value)) 
+        gp.check_result(gp.gp_camera_set_config(camera, config)) 
 
     # capture preview image (not saved to camera memory card)
-    print('Capturing preview image')
-    camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
+    print(time.time()-t0, 'Capturing preview image')
+
+    camera_file = gp.check_result(gp.gp_camera_capture_preview(camera)) # takes 2.2s + shutter
+    print(time.time()-t0, ' p f')
     file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
-    print('01----------', type(file_data),file_data)
+    print(time.time()-t0, '01----------', type(file_data),file_data)
+
 
     # display image
     data = memoryview(file_data)
-    print('02----------', type(data), data)
+    print(time.time()-t0, '02----------', type(data), data)
     print('    ', len(data))
     print(data[:10].tolist())
     if 'raw' in imgformat.lower():
@@ -206,4 +216,8 @@ That is, duplicate the line starting "18:", and make it "19:". And add "20:" ...
     raw = rawpy.imread("path/to/file") # access to the RAW image
     rgb = raw.postprocess() # a numpy RGB array
 
+
+ D350 = 22.2 x 14.8 mm CMOS
 """
+
+
