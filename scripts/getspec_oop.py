@@ -10,26 +10,22 @@ import time
 
 name = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S') # unix-convenient date format (not exactly ISO8601)
 
+
+
+## -- capture raw image ---
 camera = gp.Camera()
-
-
 camera.init() # not needed?
-# TODO disable "manual focus drive" somehow to prevent delays & fails ?
-# bash command with "--capture-tethered works perfectly" or fails randomly too ?
-#   suggest simple use case (w/ settings) on https://github.com/jim-easterbrook/python-gphoto2
 cfg = camera.get_config()
 
-#cfg.get_child_by_name('imageformat').set_value('RAW 2')
-#cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
-#cfg.get_child_by_name('shutterspeed').set_value('1/20')
-#cfg.get_child_by_name('iso').set_value('100')
-#camera.set_config(cfg)
+cfg.get_child_by_name('imageformat').set_value('RAW 2')
+cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
+cfg.get_child_by_name('shutterspeed').set_value('2')
+cfg.get_child_by_name('iso').set_value('100')
+camera.set_config(cfg)
+
+a = camera.capture_preview() 
+a.save(name + '_rawdata.cr2')
 #
-#a = camera.capture_preview() 
-#a.save('a.cr2')
-#
-#import rawpy
-#raw = rawpy.imread("a.cr2") # access to the RAW image
 #rawArray = raw.postprocess(gamma=(1,1), no_auto_bright=True, output_bps=16)
 #rawArray = np.sum(rawArray, axis=2) # merge one RGBG cell, making monochrome img
 #print(rawArray.shape, np.max(rawArray), np.mean(rawArray) )
@@ -37,48 +33,21 @@ cfg = camera.get_config()
 
 
 
-# start anew to make new config work - and this should not be neccessary
-time.sleep(1) # minimum of 1 sec delay
-
-cfg.get_child_by_name('imageformat').set_value('RAW 2')
-cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
-#cfg.get_child_by_name('shutterspeed').set_value('1/20')
-cfg.get_child_by_name('shutterspeed').set_value('1/100')
-cfg.get_child_by_name('iso').set_value('1600')
-camera.set_config(cfg)
-
-b = camera.capture_preview() ; time.sleep(1) # minimum of 1 sec delay
-
-b.save(name + 'cfl_200um_5s.cr2')
-
-time.sleep(2)
-
-
-time.sleep(1) # minimum of 1 sec delay
-
-cfg.get_child_by_name('imageformat').set_value('RAW 2')
-cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
-cfg.get_child_by_name('shutterspeed').set_value('1/10')
-cfg.get_child_by_name('iso').set_value('100')
-camera.set_config(cfg)
-b = camera.capture_preview()
-b.save('c.cr2')
-
-time.sleep(1) # minimum of 1 sec delay
-
-cfg.get_child_by_name('imageformat').set_value('RAW 2')
-cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
-cfg.get_child_by_name('shutterspeed').set_value('1')
-cfg.get_child_by_name('iso').set_value('1600')
-camera.set_config(cfg)
-b = camera.capture_preview()
-b.save('d.cr2')
+### start anew to make new config work - and this should not be neccessary
+#cfg.get_child_by_name('imageformat').set_value('RAW 2')
+#cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
+#cfg.get_child_by_name('shutterspeed').set_value('2') #cfg.get_child_by_name('shutterspeed').set_value('1/100')
+#cfg.get_child_by_name('iso').set_value('1600')
+#camera.set_config(cfg)
+#for x in range(10):
+    #b = camera.capture_preview(); 
+    #time.sleep(.001) # if it hangs - add some 1 sec delay?
+#b.save(name + '_rawdata.cr2')
 
 
 
 
-camera.exit()
-quit()
+#camera.exit()
 
 
 #my_set(name='imageformat', value='RAW')
@@ -104,13 +73,34 @@ quit()
 #print(cfg.get_child_by_name("shutterspeed").get_value())
 #camera.set_config(cfg)
 
-#WORKS!
+## --- raw file demosaic ---
+import rawpy
+#name = '2024-04-29_142117' # XXX debug only if camera not available
+with rawpy.imread(name + '_rawdata.cr2') as raw:
+    print(raw)
+    rgb = raw.postprocess(demosaic_algorithm=0, gamma=(1,1), no_auto_bright=True, output_bps=16)
+    print(rgb)
+    print(rgb.shape)
+#import imageio
+#imageio.imsave('linear.tiff', rgb)
+
+
+
+# TODO disable "manual focus drive" somehow to prevent delays & fails ?
+# bash command with "--capture-tethered works perfectly" or fails randomly too ?
+#   suggest simple use case (w/ settings) on https://github.com/jim-easterbrook/python-gphoto2
+
+## --- interactive plotting ---
+import matplotlib.pyplot as plt
+plt.imshow(rgb)
+plt.show()
+
+## --- demosaic tweaking ---
 #imageformat_cfg = cfg.get_child_by_name('imageformat')
 #imageformat = imageformat_cfg.get_value()
-#print(imageformat)
+#print('imageformat', imageformat)
 #imageformat_cfg.set_value('RAW') #imageformat_cfg.set_value('Small Fine JPEG')
 #camera.set_config(cfg)
-
 #rawArray = raw.postprocess(demosaic_algorithm=rawpy.DemosaicAlgorithm.Linear,
                                    #half_size=True,no_auto_bright=True, output_bps=16,
                                    #four_color_rgb=False
@@ -126,4 +116,6 @@ quit()
                                    #no_auto_scale=True,gamma=(2.222, 4.5),
                                    #chromatic_aberration=None,
                                    #bad_pixels_path=None)
-    #rgb = raw.postprocess(gamma=(1,1), 
+#rgb = raw.postprocess(gamma=(1,1)) 
+#print(rgb)
+#
