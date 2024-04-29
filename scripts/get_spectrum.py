@@ -37,6 +37,7 @@ from scipy import ndimage
 shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 3
 iso             = sys.argv[2] if len(sys.argv)>2 else 100
 comment         = sys.argv[3] if len(sys.argv)>3 else ''
+## Make sure your camera has configuration: "PC Connection", not "PTP mode" - that wouldn't work
 
 #def get_img(camera, imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
 def main():
@@ -45,10 +46,12 @@ def main():
     gp.check_result(gp.use_python_logging())
     print('Establishing communication with the camera (wait few seconds)')
     camera = gp.check_result(gp.gp_camera_new())
-    gp.check_result(gp.gp_camera_init(camera))
+
+    gp.check_result(gp.gp_camera_init(camera)) # unnecessary ?
+
     # required configuration will depend on camera type!
     config = gp.check_result(gp.gp_camera_get_config(camera))
-    print(time.time()-t0, 'Camera ready')
+    print(time.time()-t0, 'Camera ready', config)
 
     # TODO  get the list of 'gp_abilities_list_get_abilities' or something like that ? 
     #  --> find out how to set image format
@@ -60,15 +63,16 @@ def main():
             gp.check_result(gp.gp_widget_set_value(widget, value))
             print(gp.check_result(gp.gp_camera_set_config(camera, config)))
         else:
-            print("Error setting value %s for %s using widget %s" % (value, name, widget))
+            print("Error setting value %s for %s using widget %s, result = %s" % (value, name, widget, OK))
     #my_set(name='imageformat', value='Large Fine JPEG')
+    my_set(name='imageformat', value='RAW2')
     my_set(name='imageformat', value='RAW')
 
     #my_set(name='iso', value='{}'.format(iso))
     my_set(name='iso', value='1600') # does '3200' offer advantage over '1600' ?
 
-    my_set(name='shutterspeed', value='30')
-    #my_set(name='shutterspeed', value='1/10')
+    #my_set(name='shutterspeed', value='30')
+    my_set(name='shutterspeed', value='1/10')
 
     #my_set(name='shutterspeed', value='{}'.format(shutterspeed))
     #for s in ('1/10','1/100'):
@@ -95,6 +99,22 @@ def main():
     file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
     print(time.time()-t0, '01----------', type(file_data),file_data)
 
+
+    ## TEST
+    # find the capture target config item
+    capture_target = gp.check_result(gp.gp_widget_get_child_by_name(config, 'capturetarget'))
+    # print current setting
+    value = gp.check_result(gp.gp_widget_get_value(capture_target))
+    print('Current setting:', value)
+    # print possible settings
+    for n in range(gp.check_result(gp.gp_widget_count_choices(capture_target))):
+        choice = gp.check_result(gp.gp_widget_get_choice(capture_target, n))
+        print('Choice:', n, choice)
+    # clean up
+    gp.check_result(gp.gp_camera_exit(camera))
+
+    #After getting the .jpg file you need to call gp_camera_wait_for_event until you get a GP_EVENT_FILE_ADDED event. 
+    # The event data is the path of the .cr2 file which you can then fetch with gp_camera_file_get.
 
     # display image
     data = memoryview(file_data)
