@@ -59,7 +59,7 @@ TODOs:
 ## Static settings & built-in constants
 vertical_convolution_length_px  = 30           ## adjust if orders start to overlap (e.g. with higher blazing angle)
 cmos_aspect_ratio               = 16./24        ## for "APS-C"; change if using CMOS/CCD with different aspect
-decimate_factor                 = 2             ## less than 2 introduces noise from Bayer mask residuals
+decimate_factor                 = 4             ## good is 2, 4, 8... less than 2 introduces noise from Bayer mask residuals
 
 
 ## Loading and access to the previously saved image processing parameters
@@ -132,14 +132,17 @@ def load_raw(raw_file_name):
 
     raw_image = Raw(filename=raw_file_name)
     raw_image.options.interpolation = interpolation.linear # n.b. "linear" and "amaze" have the same effect
+    print(dir(raw_image))
     npimage = np.array(raw_image.raw_image(include_margin=False), dtype=float)  # returns: 2D np. array
 
     ## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
     #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
-    vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
-    npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
+    #FIXME: array has incorrect shape
+    #vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
+    #npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
 
     ## optional: decimate data for faster processing
+    print(npimage.shape)
     npimage = ndimage.convolve(npimage, np.ones([decimate_factor,decimate_factor])/decimate_factor**2)
     npimage = npimage[::decimate_factor,::decimate_factor]
 
@@ -147,6 +150,15 @@ def load_raw(raw_file_name):
     npimage -= np.min(npimage) 
 
     return npimage 
+
+def load_ppm(file_name):
+    import imageio
+    im = imageio.imread(str(file_name))    #, mode='RGB'
+    im = np.sum(im, axis=2)
+    im = im[::decimate_factor,::decimate_factor]
+    print(im.shape)
+    return im
+    
 
 ## Actual analysis of the image
 def spectrum_for_single_order(im, difrorder):
@@ -197,7 +209,7 @@ def img2spectrum(npimage=None, raw_file_name='../image_logs/output_debayered_.1s
             (wavelength, intensity) - two tuples describing the resulting spectrum
     """
     echelle_parameters  = load_echelle_parameters()
-    if not npimage: npimage = load_raw(raw_file_name)
+    if not npimage: npimage = load_raw(raw_file_name) # needed ???
     partial_lambdas, partial_intensities = ([], [])
     for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
         partial_lambdas.append(plot_lambdas)
@@ -212,7 +224,8 @@ if __name__ == '__main__':
     fig.subplots_adjust(left=0.05, right=0.95, bottom=0.30, top=0.99, hspace=0)
 
     echelle_parameters  = load_echelle_parameters()
-    npimage = load_raw('../image_logs/output_debayered_.1s_ISO100_.cr2')
+    #npimage = load_raw('../image_logs/output_debayered_.1s_ISO100_.cr2')
+    npimage = load_ppm('../image_logs/output-test0100ms.ppm')
 
 
 
@@ -279,7 +292,8 @@ if __name__ == '__main__':
 
 
     ## GUI: plotting the RAW image ## TODO employ the Actor class in matplotlib to make updates more responsive
-    im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e5), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
+    im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e0), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
+    #im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e5), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
 
     ## GUI: Prepare (empty) matplotlib curve objects for plotting the diffraction orders and spectra
     lines, peaks_major, peaks_midi, peaks_minor, spectral_curves = ([], [], [], [], [])
