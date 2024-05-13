@@ -31,13 +31,13 @@ import gphoto2 as gp
 
 from PIL import Image
 from scipy import ndimage 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 shutterspeed    = sys.argv[1] if len(sys.argv)>1 else 1
 iso             = sys.argv[2] if len(sys.argv)>2 else 100
 comment         = sys.argv[3] if len(sys.argv)>3 else ''
 
-def get_img(camera, imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
+#def get_img(camera, imageformat='RAW', shutterspeed=shutterspeed, iso=iso)
 def main():
     logging.basicConfig( format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
     gp.check_result(gp.use_python_logging())
@@ -97,13 +97,14 @@ def main():
         #xx from rawkit import raw
         #xx raw_image_process = raw.Raw(io.BytesIO(file_data))
 
-        #import rawpy
-        #raw = rawpy.imread(bytesio)
-        #rgb = raw.postprocess()
+        import rawpy
+        raw = rawpy.imread(data)
+        rgb = raw.postprocess()
+        print(rgb)
 
         #bytesio = io.BytesIO(file_data)
         #print('bytesio', bytesio)
-        raw_file_name = 'image_logs/output_debayered_{}s_ISO{}_{}.cr2'.format(shutterspeed.replace('/','div'), iso, comment)
+        raw_file_name = 'image_logs/output_debayered_{}s_ISO{}_{}___NEW.cr2'.format(str(shutterspeed).replace('/','div'), iso, comment)
         gp.gp_file_save(camera_file, raw_file_name)
 
         # Note that - if Canon cameras are used - the dependency on rawkit can be replaced with a dedicated parser
@@ -123,6 +124,11 @@ def main():
         raw_image_process = raw_image.process()
         if raw_image_process is raw_image: print("they are identical")
 
+        #from rawkit.raw import Raw
+        #from rawkit.options import WhiteBalance
+        #with Raw(filename='some/raw/image.CR2') as raw:
+          #raw.options.white_balance = WhiteBalance(camera=False, auto=True)
+          #raw.save(filename='some/destination/image.ppm')
 
         ## FIXME - 
         npimage = np.array(raw_image.raw_image(include_margin=False)) # returns: 2D np. array
@@ -134,8 +140,8 @@ def main():
         print(npimage) ## gives 1-d array of values
         print(npimage.shape) ## gives 1-d array of values
 
-        plt.imshow(npimage)
-        plt.hist(npimage.flatten(), 4096)
+        #plt.imshow(npimage)
+        #plt.hist(npimage.flatten(), 4096)
         #plt.plot([200,500], [300,-100], lw=5, c='r')
         #plt.show()
 
@@ -156,9 +162,9 @@ def main():
         return npimage 
         print('retrieved image as numpy array with dimensions:', npimage.shape)
         #image.show()
-        plt.imshow(npimage)
-        plt.plot([200,500], [300,-100], lw=5, c='k')
-        plt.show()
+        #plt.imshow(npimage)
+        #plt.plot([200,500], [300,-100], lw=5, c='k')
+        #plt.show()
 
 
 
@@ -173,3 +179,32 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+""" 
+Troubleshooting 2022
+
+
+### fails with ```gphoto2.GPhoto2Error: [-105] Unknown model```
+
+Install fresh version of gphoto2:
+
+    sudo snap install gphoto2
+
+
+### fails with ```ImportError: Unsupported Libraw version: 0.19.5```
+
+"it appears rawkit has gone unmaintained"
+
+To fix it, edit /usr/local/lib/python3.8/dist-packages/libraw/bindings.py according to https://github.com/mateusz-michalik/cr2-to-jpg/issues/4
+
+That is, duplicate the line starting "18:", and make it "19:". And add "20:" ... etc.
+
+
+### Rawkit is hard to use
+
+"It may be easier if you use rawpy" https://stackoverflow.com/questions/45704689/opencv-and-rawkit-python#45721804
+
+    raw = rawpy.imread("path/to/file") # access to the RAW image
+    rgb = raw.postprocess() # a numpy RGB array
+
+"""
