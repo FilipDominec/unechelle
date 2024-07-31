@@ -7,6 +7,7 @@ import datetime
 import gphoto2 as gp
 import io
 import numpy as np
+import rawpy # because libraw is defunct as of 2024
 import time
 
 
@@ -29,29 +30,21 @@ camera.set_config(cfg)
 camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
 file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
 
-camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
-file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
+#camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
+#file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
 
 camera.exit()
 
 
 
-## --- raw data exctraction ---
-import rawpy
+## --- raw data exctraction from CR2 into a numpy array ---
 
 #name = '2024-04-29_142117' 
 #with rawpy.imread(name + '_rawdata.cr2') as raw: # debug only if camera not available
-
 with rawpy.imread(io.BytesIO(file_data)) as raw:  # saves no data on harddrive
     # note that the obtained dtype is uint16, ranging up to 2**12 for canon 350D, 
     # and that numpy does not check for under/overflows 
     pixels = raw.raw_image_visible.copy() 
-
-
-# TODO disable "manual focus drive" somehow to prevent delays & fails ?
-# bash command with "--capture-tethered works perfectly" or fails randomly too ?
-#   suggest simple use case (w/ settings) on https://github.com/jim-easterbrook/python-gphoto2
-
 
 
 ## --- interactive plotting ---
@@ -70,4 +63,8 @@ plt.show()
 
 # ==== REMARKS ==== 
 #a = camera.capture_preview()  # alternate capture command, why? 
+
+# (todo:) disable "manual focus drive" somehow to prevent delays & fails ?
+# bash command with "--capture-tethered works perfectly" or fails randomly too ?
+#   suggest simple use case (w/ settings) on https://github.com/jim-easterbrook/python-gphoto2
 

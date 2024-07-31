@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import collections
 import time, sys
 
-from rawkit.raw import Raw
-from rawkit.options import interpolation
+#from rawkit.raw import Raw
+#from rawkit.options import interpolation
+import rawpy
 from scipy import ndimage
 
 """
@@ -127,7 +128,7 @@ def lambda_to_y(ll):
     return (p('κ vertical camera declination (rad)') + symmetricprism(ll)) / cmosh * p('F camera foc dist (mm)')*1e-3
 
 
-def load_raw(raw_file_name):
+def load_raw_with_RawKit(raw_file_name): # old way - defunct
     """ Loading and pre-processing the RAW image """
 
     raw_image = Raw(filename=raw_file_name)
@@ -135,6 +136,31 @@ def load_raw(raw_file_name):
     print(dir(raw_image))
     npimage = np.array(raw_image.raw_image(include_margin=False), dtype=float)  # returns: 2D np. array
 
+    ## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
+    #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
+    #FIXME: array has incorrect shape
+    #vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
+    #npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
+
+    ## optional: decimate data for faster processing
+    print(npimage.shape)
+    npimage = ndimage.convolve(npimage, np.ones([decimate_factor,decimate_factor])/decimate_factor**2)
+    npimage = npimage[::decimate_factor,::decimate_factor]
+
+    ## optional: subtract constant background #TODO  should subtract known "black frame"
+    npimage -= np.min(npimage) 
+
+    return npimage 
+
+def load_raw(raw_file_name): # old way - defunct
+    """ Loading and pre-processing the RAW image """
+
+    with rawpy.imread(raw_file_name) as raw:
+        #npimage = raw.postprocess()
+        npimage = raw.raw_image_visible.copy()
+        print(type(npimage))
+        print(npimage)
+        print(npimage.shape)
     ## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
     #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
     #FIXME: array has incorrect shape
@@ -224,8 +250,8 @@ if __name__ == '__main__':
     fig.subplots_adjust(left=0.05, right=0.95, bottom=0.30, top=0.99, hspace=0)
 
     echelle_parameters  = load_echelle_parameters()
-    #npimage = load_raw('../image_logs/output_debayered_.1s_ISO100_.cr2')
-    npimage = load_ppm('../image_logs/output-test0100ms.ppm')
+    npimage = load_raw('../image_logs/output_debayered_.1s_ISO100_.cr2')
+    #npimage = load_ppm('../image_logs/output-test0100ms.ppm')
 
 
 
