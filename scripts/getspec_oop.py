@@ -19,8 +19,8 @@ cfg = camera.get_config()
 
 cfg.get_child_by_name('imageformat').set_value('RAW 2')
 cfg.get_child_by_name('capturesizeclass').set_value('Full Image')
-cfg.get_child_by_name('shutterspeed').set_value('0.5') # use '1' or '0.5' or '1/10' etc. according to menu
-cfg.get_child_by_name('iso').set_value('800') # use '100', '200', '400', '800' or '1600' only for 350D
+cfg.get_child_by_name('shutterspeed').set_value('1/500') # typically '1' or '0.5' or '1/10' etc. according to menu, use: gphoto2 --list-all-config
+cfg.get_child_by_name('iso').set_value('100') # use '100', '200', '400', '800' or '1600' only for 350D
 camera.set_config(cfg)
 
 #name = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S') # unix-convenient date format (not exactly ISO8601)
@@ -33,6 +33,7 @@ camera_file = gp.check_result(gp.gp_camera_capture_preview(camera))
 file_data = gp.check_result(gp.gp_file_get_data_and_size(camera_file))
 
 camera.exit()
+
 
 
 ## --- raw data exctraction ---
@@ -50,6 +51,8 @@ with rawpy.imread(io.BytesIO(file_data)) as raw:  # saves no data on harddrive
 # TODO disable "manual focus drive" somehow to prevent delays & fails ?
 # bash command with "--capture-tethered works perfectly" or fails randomly too ?
 #   suggest simple use case (w/ settings) on https://github.com/jim-easterbrook/python-gphoto2
+
+
 
 ## --- interactive plotting ---
 
