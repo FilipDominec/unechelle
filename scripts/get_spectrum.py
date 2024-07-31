@@ -127,9 +127,10 @@ def main():
         #xx from rawkit import raw
         #xx raw_image_process = raw.Raw(io.BytesIO(file_data))
 
-        #import rawpy
-        #raw = rawpy.imread(bytesio)
-        #rgb = raw.postprocess()
+        import rawpy
+        raw = rawpy.imread(data)
+        rgb = raw.postprocess()
+        print(rgb)
 
         #bytesio = io.BytesIO(file_data)
         #print('bytesio', bytesio)
@@ -236,8 +237,4 @@ That is, duplicate the line starting "18:", and make it "19:". And add "20:" ...
     raw = rawpy.imread("path/to/file") # access to the RAW image
     rgb = raw.postprocess() # a numpy RGB array
 
-
- D350 = 22.2 x 14.8 mm CMOS
-"""
-
-
+# note sensor size of Canon D350 = 22.2 x 14.8 mm CMOS
