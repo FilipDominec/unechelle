@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import collections
+import rawpy
+import sys
+from scipy import ndimage
 import time, sys
 
-#from rawkit.raw import Raw
-#from rawkit.options import interpolation
-import rawpy
-from scipy import ndimage
+import echelle_analysis
+import get_camera_image
 
 """
 Processes a 2D photograph into a single 1D spectrum.
@@ -35,7 +36,7 @@ Derivation of the equations used:
       where α, β are the angles of incident and diffracted rays.
 
       TODO: Take into account also the vertical inclination due to previous passing through the prism.
-      TODO2: Allow for image rotattion!
+      TODO2: Allow for image rotation!
       TODO3: Could this be speeded up? https://stackoverflow.com/questions/7878398/how-to-extract-an-arbitrary-line-of-values-from-a-numpy-array
 
     * Normalized coordinate in the middle of the sensor X = 0.5 corresponds to β = -ξ, and more generally, 
@@ -54,13 +55,11 @@ TODOs:
     improvements:
         HDR data composition
 
-
-
 """
 ## Static settings & built-in constants
 vertical_convolution_length_px  = 30           ## adjust if orders start to overlap (e.g. with higher blazing angle)
 cmos_aspect_ratio               = 16./24        ## for "APS-C"; change if using CMOS/CCD with different aspect
-decimate_factor                 = 4             ## good is 2, 4, 8... less than 2 introduces noise from Bayer mask residuals
+decimate_factor                 = 2             ## good is 2, 4, 8... less than 2 introduces noise from Bayer mask residuals
 
 
 ## Loading and access to the previously saved image processing parameters
@@ -128,31 +127,7 @@ def lambda_to_y(ll):
     return (p('κ vertical camera declination (rad)') + symmetricprism(ll)) / cmosh * p('F camera foc dist (mm)')*1e-3
 
 
-def load_raw_with_RawKit(raw_file_name): # old way - defunct
-    """ Loading and pre-processing the RAW image """
-
-    raw_image = Raw(filename=raw_file_name)
-    raw_image.options.interpolation = interpolation.linear # n.b. "linear" and "amaze" have the same effect
-    print(dir(raw_image))
-    npimage = np.array(raw_image.raw_image(include_margin=False), dtype=float)  # returns: 2D np. array
-
-    ## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
-    #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
-    #FIXME: array has incorrect shape
-    #vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
-    #npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
-
-    ## optional: decimate data for faster processing
-    print(npimage.shape)
-    npimage = ndimage.convolve(npimage, np.ones([decimate_factor,decimate_factor])/decimate_factor**2)
-    npimage = npimage[::decimate_factor,::decimate_factor]
-
-    ## optional: subtract constant background #TODO  should subtract known "black frame"
-    npimage -= np.min(npimage) 
-
-    return npimage 
-
-def load_raw(raw_file_name): # old way - defunct
+def load_raw(raw_file_name): 
     """ Loading and pre-processing the RAW image """
 
     with rawpy.imread(raw_file_name) as raw:
@@ -161,14 +136,8 @@ def load_raw(raw_file_name): # old way - defunct
         print(type(npimage))
         print(npimage)
         print(npimage.shape)
-    ## vertical convolution to reduce noise (taking advantage of the multi-megapixel image)
-    #vertical_averaging_kernel = np.outer(np.e**(-np.linspace(-1,1,vertical_convolution_length_px)**2),np.array([1]))
-    #FIXME: array has incorrect shape
-    #vertical_averaging_kernel = np.outer(np.sin(-np.linspace(0,np.pi,vertical_convolution_length_px)**.5),np.array([1]))
-    #npimage = ndimage.convolve(npimage, vertical_averaging_kernel/np.sum(vertical_averaging_kernel)) 
 
     ## optional: decimate data for faster processing
-    print(npimage.shape)
     npimage = ndimage.convolve(npimage, np.ones([decimate_factor,decimate_factor])/decimate_factor**2)
     npimage = npimage[::decimate_factor,::decimate_factor]
 
@@ -176,15 +145,6 @@ def load_raw(raw_file_name): # old way - defunct
     npimage -= np.min(npimage) 
 
     return npimage 
-
-def load_ppm(file_name):
-    import imageio
-    im = imageio.imread(str(file_name))    #, mode='RGB'
-    im = np.sum(im, axis=2)
-    im = im[::decimate_factor,::decimate_factor]
-    print(im.shape)
-    return im
-    
 
 ## Actual analysis of the image
 def spectrum_for_single_order(im, difrorder):
@@ -226,7 +186,7 @@ def composite_spectrum(partial_lambdas, partial_intensities):
 
 
 
-def img2spectrum(npimage=None, raw_file_name='../image_logs/output_debayered_.1s_ISO100_.cr2'):
+def img2spectrum(npimage=None): #, raw_file_name='../image_logs/output_debayered_.1s_ISO100_.cr2'):
     """ 
     Input:  
             npimage         - 2D numpy array containing the image pixels
@@ -235,7 +195,6 @@ def img2spectrum(npimage=None, raw_file_name='../image_logs/output_debayered_.1s
             (wavelength, intensity) - two tuples describing the resulting spectrum
     """
     echelle_parameters  = load_echelle_parameters()
-    if not npimage: npimage = load_raw(raw_file_name) # needed ???
     partial_lambdas, partial_intensities = ([], [])
     for difrorder in range(int(p('first_order_number')), int(p('last_order_number')+1)):
         partial_lambdas.append(plot_lambdas)
@@ -250,13 +209,11 @@ if __name__ == '__main__':
     fig.subplots_adjust(left=0.05, right=0.95, bottom=0.30, top=0.99, hspace=0)
 
     echelle_parameters  = load_echelle_parameters()
-    npimage = load_raw('../image_logs/output_debayered_.1s_ISO100_.cr2')
-    #npimage = load_ppm('../image_logs/output-test0100ms.ppm')
-
+    camera = None  # will be overwritten by a 'camera' instance on demand
 
 
     ## GUI: update plots on manual parameter tuning
-    def update(val): 
+    def update(event): 
         partial_lambdas, partial_intensities = ([], [])
         for lineindex, difrorder in enumerate(range(int(p('first_order_number')), int(p('last_order_number')+1))):
             x = np.linspace(0, 1, 20) 
@@ -307,19 +264,52 @@ if __name__ == '__main__':
         sliderpos += sliderheight*1.4 if key in ('x_to_lambda_ofs','κ vertical camera declination (rad)') else sliderheight
 
     ## GUI: Option to save current parameter values
-    def save_values(event): 
+    def save_settings(event): 
         with open('echelle_settings.dat', 'w') as of:
             for key,item in paramsliders.items(): 
                 save_line = key + ' '*(40-len(key)) + ' = ' + str(item.val)
                 of.write(save_line+'\n')
                 print(save_line)
-    button = matplotlib.widgets.Button(plt.axes([.8, 0.02, 0.1, sliderheight]), 'Save settings', color='.7', hovercolor='.9')
-    button.on_clicked(save_values)
+    btnSaveSett = matplotlib.widgets.Button(plt.axes([.2, 0.01, 0.1, sliderheight]), 'Save config', color='.7', hovercolor='.9')
+    btnSaveSett.on_clicked(save_settings)
+    
 
+    def get_image(event):
+        ## If camera is not connected
+        npimage, found_camera = get_camera_image.capture(camera=camera, shutterspeed='1/500', iso='100', save_to_rawfile=None)
+        if npimage is None:
+            default_image = "../image_logs/output_debayered_.1s_ISO100_.cr2"
+            npimage = get_camera_image.load(default_image)
+            found_camera = None
+
+        if im: 
+            print(im, npimage)
+            im.set_data(np.log10(npimage+np.max(npimage)/1e4)) # TODO this is dupli and ugly
+            update(None)
+
+        return npimage, found_camera
+    btnGetImg = matplotlib.widgets.Button(plt.axes([.4, 0.01, 0.1, sliderheight]), 'Get image', color='.7', hovercolor='.9')
+    btnGetImg.on_clicked(get_image)
+
+
+    def save_image(event):
+        print("TODO saving image")
+    btnSaveImg = matplotlib.widgets.Button(plt.axes([.6, 0.01, 0.1, sliderheight]), 'Save image', color='.7', hovercolor='.9')
+    btnSaveImg.on_clicked(save_image)
+
+    def export_spectrum(event):
+        print("TODO btnExportSpectrum")
+    btnExportSpectrum = matplotlib.widgets.Button(plt.axes([.8, 0.01, 0.1, sliderheight]), 'Save settings', color='.7', hovercolor='.9')
+    btnExportSpectrum.on_clicked(export_spectrum)
+
+
+
+    im=None
+    npimage, camera = get_image(None)
+    npimage -= np.min(npimage)
 
     ## GUI: plotting the RAW image ## TODO employ the Actor class in matplotlib to make updates more responsive
-    im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e0), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
-    #im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e5), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
+    im = ax1.imshow(np.log10(npimage+np.max(npimage)/1e4), extent=[0,1,0,1], cmap=matplotlib.cm.Greys_r)
 
     ## GUI: Prepare (empty) matplotlib curve objects for plotting the diffraction orders and spectra
     lines, peaks_major, peaks_midi, peaks_minor, spectral_curves = ([], [], [], [], [])
@@ -332,7 +322,7 @@ if __name__ == '__main__':
         peaks_minor.append(ax1.plot([], [], marker='D', lw=0, markersize=4, markeredgecolor=color, markerfacecolor='none',alpha=.4)[0])
         spectral_curves.append(ax2.plot([], [], lw=1.5, alpha=.8, color=color)[0])
         composite_curve = ax2.plot([], [], lw=2, color='k')[0]
-    update(None)
+
 
     ## GUI: In the right panel: Generate artificial neon spectrum for verification ## TODO make more general
     artif_x = np.linspace(300e-9, 1100e-9, 2000)
@@ -346,6 +336,9 @@ if __name__ == '__main__':
     wls,intenss = np.genfromtxt('../../spectral_data/neon-nist-cropped.dat', unpack=True)
     for wl,intens in zip(wls,intenss): 
         artif_y += np.exp(-(artif_x-wl/1e9)**2 * 1e9**2)*intens**3/1e10
+
+
+
     ax2.plot(artif_x*1e9, artif_y, lw=.6, c='k', ls='--')
 
     ax2.set_yscale('log')
@@ -353,4 +346,6 @@ if __name__ == '__main__':
     ax2.set_xlabel('wavelength (nm)')
     ax2.set_ylabel('uncalibrated intensity (a. u.)')
         
+    update(None)
+
     plt.show()
